@@ -8,6 +8,26 @@ The instance had an IAM Agency attached to it, with the following roles attached
 * OBS OperateAccess (theoretically just this one is needed)
 * Tenant Administrator (useful for doing other API operation attempts)
 
+## Extracing the AK/SK/Token values and storing them in environment variables
+
+`jq` is helpful to extract values from the json output from the metadata API 
+
+```bash
+apt update && apt install jq -y 
+
+## Viewing the metadata API output, formatted with jq
+curl -s http://169.254.169.254/openstack/latest/securitykey | jq
+```
+
+### These values expire after 15 minutes, so you need to constantly rerun this
+
+```bash
+export IAM_AGENCY_AK=$(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.access)
+export IAM_AGENCY_SK=$(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.secret)
+export IAM_AGENCY_TOKEN=$(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.securitytoken)
+```
+
+
 ##  OBS权限配置实践--委托服务进行OBS访问 
 [This is a tutorial](https://bbs.huaweicloud.com/blogs/100733) on how to access an OBS bucket, from an ECS instance, using the IAM Agency, using S3curl as the S3 client.
 
@@ -36,24 +56,6 @@ https://obs-for-agency-access.obs.ap-southeast-1.myhuaweicloud.com/test123.txt \
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?><Error><Code>InvalidAccessKeyId</Code><Message>The AWS Access Key Id you provided does not exist in our records.</Message><RequestId>00000171F548F0B140089ED03178BF71</RequestId><HostId>8tgnuSvk/MHa2wdx2Qey22w5zyJ1FaVomGztgp53G/I0cBQ8rbA70YMlpwSngjFN</HostId><AWSAccessKeyId>01PJTUUPZUJITI8GV1JU</AWSAccessKeyId></Error>
 ```
 
-## Extracing the AK/SK/Token values and storing them in environment variables
-
-### `jq` is helpful to extract values from the json output from the metadata API 
-
-```bash
-apt update && apt install jq -y 
-
-## Viewing the metadata API output, formatted with jq
-curl -s http://169.254.169.254/openstack/latest/securitykey | jq
-```
-
-### These values expire after 15 minutes, so you need to constantly rerun this
-
-```bash
-export IAM_AGENCY_AK=$(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.access)
-export IAM_AGENCY_SK=$(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.secret)
-export IAM_AGENCY_TOKEN=$(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.securitytoken)
-```
 
 ## Another attempt, using `obsutil`
 
