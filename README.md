@@ -4,6 +4,10 @@ The several attempts to access an OBS bucket from an ECS instance, using an IAM 
 
 These tests were made in an ECS instance with *Ubuntu 18.04*, in *ap-southeast-1* region.
 
+```bash
+export OBS_HOST=obs.ap-southeast-1.myhuaweicloud.com
+```
+
 The instance had an IAM Agency attached to it, with the following roles attached to the IAM Agency:
 * OBS OperateAccess (theoretically just this one is needed)
 * Tenant Administrator (useful for doing other API operation attempts)
@@ -20,6 +24,8 @@ curl -s http://169.254.169.254/openstack/latest/securitykey | jq
 ```
 
 ### These values expire after 15 minutes, so you need to constantly rerun this
+
+The AK/SK/Token values are changed for every new requrest to the metadata API (http://169.54.169.254), and they need to be used as a set. **This means that AK/SK/Token must be extract from the same API request, and not subsequent ones.**
 
 ```bash
 export IAM_AGENCY_SECURITY_KEY=$(curl -s http://169.254.169.254/openstack/latest/securitykey | jq .)
@@ -44,7 +50,7 @@ Instead, we are getting the AK/SK/Token directly from the metadata service every
 
 ```bash
 s3curl \
---id $(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.access) \
+--id $IAM_AGENCY_AK \
 --key $(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.secret) \
 -- \
 -H "x-amz-security-token: $(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.securitytoken)" \
@@ -84,7 +90,7 @@ This creates an empty configuration file, if not already existant. If it already
 
 ```bash
 obsutil config \
-   -e=obs.ap-southeast-1.myhuaweicloud.com \
+   -e=$OBS_HOST \
    -i=$IAM_AGENCY_AK \
    -k=$IAM_AGENCY_SK \
    -t=$IAM_AGENCY_TOKEN
