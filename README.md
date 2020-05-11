@@ -25,7 +25,7 @@ curl -s http://169.254.169.254/openstack/latest/securitykey | jq
 
 ### These values expire after 15 minutes, so you need to constantly rerun this
 
-The AK/SK/Token values are changed for every new requrest to the metadata API (http://169.54.169.254), and they need to be used as a set. **This means that AK/SK/Token must be extract from the same API request, and not subsequent ones.**
+The AK/SK/Token values are changed for every new requrest to the metadata API (http://169.54.169.254), and they need to be used as a set. **This means that AK/SK/Token must be extract from the same API request, and not separate ones.**
 
 ```bash
 export IAM_AGENCY_SECURITY_KEY=$(curl -s http://169.254.169.254/openstack/latest/securitykey | jq .)
@@ -35,36 +35,7 @@ export IAM_AGENCY_TOKEN=$(echo $IAM_AGENCY_SECURITY_KEY | jq -r .credential.secu
 ```
 
 
-##  OBS权限配置实践--委托服务进行OBS访问 
-[This is a tutorial](https://bbs.huaweicloud.com/blogs/100733) on how to access an OBS bucket, from an ECS instance, using the IAM Agency, using S3curl as the S3 client.
-
-**It's exactly what we need, but unfortunately it didn't work for me.**
-
-```bash
-apt install s3curl -y
-```
-
-I made an adaption, avoiding the need to constantly edit the `.s3curl` configuration file (as the temporary credentials expires in a few minutes).
-
-Instead, we are getting the AK/SK/Token directly from the metadata service everytime the oneliner below is run.
-
-```bash
-s3curl \
---id $IAM_AGENCY_AK \
---key $(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.secret) \
--- \
--H "x-amz-security-token: $(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.securitytoken)" \
-https://obs-for-agency-access.obs.ap-southeast-1.myhuaweicloud.com/test123.txt \
-2>/dev/null
-```
-
-#### Output
-```xml
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Error><Code>InvalidAccessKeyId</Code><Message>The AWS Access Key Id you provided does not exist in our records.</Message><RequestId>00000171F548F0B140089ED03178BF71</RequestId><HostId>8tgnuSvk/MHa2wdx2Qey22w5zyJ1FaVomGztgp53G/I0cBQ8rbA70YMlpwSngjFN</HostId><AWSAccessKeyId>01PJTUUPZUJITI8GV1JU</AWSAccessKeyId></Error>
-```
-
-
-## Another attempt, using `obsutil`
+## Using `obsutil`
 
 * [OBS installation instructions](https://support.huaweicloud.com/intl/en-us/utiltg-obs/obs_11_0003.html)
 
@@ -78,15 +49,27 @@ obsutil version
 ```
 
 ### `obsutil` refuses to work without an `.obsutilconfig` (even when all parameters are passed through the CLI)
-This creates an empty configuration file, if not already existant. If it already exists, doesn't change it.
+This will create an empty configuration file if not already existant. 
+If it already exists, will keep the file as it is.
 
 ```bash
  touch -a ~/.obsutilconfig
 ```
 
+### Calling `obsutil` passing the Securitykey parameters through CLI
+
+```bash
+obsutil ls \
+   -e=$OBS_HOST \
+   -i=$IAM_AGENCY_AK \
+   -k=$IAM_AGENCY_SK \
+   -t=$IAM_AGENCY_TOKEN
+```
+
 ### Configuring `obsutil` with the AK/SK and Token
 
-**`-t` flag is undocumented**
+* Don't forget that the security key expires! You will need to eventually refresh it.
+* `-t` flag is undocumented
 
 ```bash
 obsutil config \
@@ -94,24 +77,28 @@ obsutil config \
    -i=$IAM_AGENCY_AK \
    -k=$IAM_AGENCY_SK \
    -t=$IAM_AGENCY_TOKEN
+
+obsutil ls
 ```
 
-## Another attempt, using `mc` (minio-client)
+##  OBS权限配置实践--委托服务进行OBS访问 
+[This is a tutorial](https://bbs.huaweicloud.com/blogs/100733) on how to access an OBS bucket, from an ECS instance, using the IAM Agency, using S3curl as the S3 client.
+
+**It's exactly what we need, but it's not working.**
 
 ```bash
-wget https://dl.min.io/client/mc/release/linux-amd64/mc
-chmod +x mc
-cp mc /usr/local/bin
-mc --help
-
-mc config host add obs https://obs.ap-southeast-1.myhuaweicloud.com \
-   $IAM_AGENCY_AK \
-   $IAM_AGENCY_SK \
-   --api S3v4
-mc ls obs/
+apt install s3curl -y
 ```
 
-### Output
+I made an adaption, avoiding the need to constantly edit the `.s3curl` configuration file (as the temporary credentials expires in a few minutes).
+
+```bash
+s3curl \
+--id $IAM_AGENCY_AK \
+--key $IAM_AGENCY_SK \
+-- \
+-H "x-amz-security-token: $IAM_AGENCY_TOKEN" \
+https://obs-for-agency-access.obs.ap-southeast-1.myhuaweicloud.com/test123.txt \
+2>/dev/null
 ```
-mc: <ERROR> Unable to list folder. The AWS Access Key Id you provided does not exist in our records.
-```
+
