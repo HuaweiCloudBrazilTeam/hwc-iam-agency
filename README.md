@@ -22,9 +22,10 @@ curl -s http://169.254.169.254/openstack/latest/securitykey | jq
 ### These values expire after 15 minutes, so you need to constantly rerun this
 
 ```bash
-export IAM_AGENCY_AK=$(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.access)
-export IAM_AGENCY_SK=$(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.secret)
-export IAM_AGENCY_TOKEN=$(curl -s http://169.254.169.254/openstack/latest/securitykey | jq -r .credential.securitytoken)
+export IAM_AGENCY_SECURITY_KEY=$(curl -s http://169.254.169.254/openstack/latest/securitykey | jq .)
+export IAM_AGENCY_AK=$(echo $IAM_AGENCY_SECURITY_KEY | jq -r .credential.access)
+export IAM_AGENCY_SK=$(echo $IAM_AGENCY_SECURITY_KEY | jq -r .credential.secret)
+export IAM_AGENCY_TOKEN=$(echo $IAM_AGENCY_SECURITY_KEY | jq -r .credential.securitytoken)
 ```
 
 
@@ -70,10 +71,23 @@ cp obsutil /usr/local/bin
 obsutil version
 ```
 
-### Configuring obsutil with the AK/SK and Token
+### `obsutil` refuses to work without an `.obsutilconfig` (even when all parameters are passed through the CLI)
+This creates an empty configuration file, if not already existant. If it already exists, doesn't change it.
+
 ```bash
-obsutil config -i=$IAM_AGENCY_AK -k=$IAM_AGENCY_SK -e=obs.ap-southeast-1.myhuaweicloud.com
-vim ~/.obsutilconfig # you will need to manually insert the token in the respective line
+ touch -a ~/.obsutilconfig
+```
+
+### Configuring `obsutil` with the AK/SK and Token
+
+**`-t` flag is undocumented**
+
+```bash
+obsutil config \
+   -e=obs.ap-southeast-1.myhuaweicloud.com \
+   -i=$IAM_AGENCY_AK \
+   -k=$IAM_AGENCY_SK \
+   -t=$IAM_AGENCY_TOKEN
 ```
 
 ## Another attempt, using `mc` (minio-client)
