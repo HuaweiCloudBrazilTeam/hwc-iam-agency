@@ -27,11 +27,13 @@ curl -s http://169.254.169.254/openstack/latest/securitykey | jq
 
 The AK/SK/Token values are changed for every new requrest to the metadata API (http://169.54.169.254), and they need to be used as a set. **This means that AK/SK/Token must be extract from the same API request, and not separate ones.**
 
+* Don't forget that the security key expires! You will need to eventually refresh it.
+
 ```bash
 export IAM_AGENCY_SECURITY_KEY=$(curl -s http://169.254.169.254/openstack/latest/securitykey | jq .)
-export IAM_AGENCY_AK=$(echo $IAM_AGENCY_SECURITY_KEY | jq -r .credential.access)
-export IAM_AGENCY_SK=$(echo $IAM_AGENCY_SECURITY_KEY | jq -r .credential.secret)
-export IAM_AGENCY_TOKEN=$(echo $IAM_AGENCY_SECURITY_KEY | jq -r .credential.securitytoken)
+export OBS_ACCESS_KEY_ID=$(echo $IAM_AGENCY_SECURITY_KEY | jq -r .credential.access)
+export OBS_SECRET_ACCESS_KEY=$(echo $IAM_AGENCY_SECURITY_KEY | jq -r .credential.secret)
+export OBS_SECURITY_TOKEN=$(echo $IAM_AGENCY_SECURITY_KEY | jq -r .credential.securitytoken)
 ```
 
 
@@ -56,27 +58,32 @@ If it already exists, will keep the file as it is.
  touch -a ~/.obsutilconfig
 ```
 
+### FIXME: Document autoChooseSecurityProvider
+* https://support.huaweicloud.com/en-us/utiltg-obs/obs_11_0067.html
+* https://support.huaweicloud.com/en-us/utiltg-obs/obs_11_0035.html
+
+* OBS_ACCESS_KEY_ID
+* OBS_SECRET_ACCESS_KEY
+* OBS_SECURITY_TOKEN
+
 ### Calling `obsutil` passing the Securitykey parameters through CLI
 
 ```bash
 obsutil ls \
    -e=$OBS_HOST \
-   -i=$IAM_AGENCY_AK \
-   -k=$IAM_AGENCY_SK \
-   -t=$IAM_AGENCY_TOKEN
+   -i=$OBS_ACCESS_KEY_ID \
+   -k=$OBS_SECRET_ACCESS_KEY \
+   -t=$OBS_SECURITY_TOKEN
 ```
 
 ### Configuring `obsutil` with the AK/SK and Token
 
-* Don't forget that the security key expires! You will need to eventually refresh it.
-* `-t` flag is undocumented
-
 ```bash
 obsutil config \
    -e=$OBS_HOST \
-   -i=$IAM_AGENCY_AK \
-   -k=$IAM_AGENCY_SK \
-   -t=$IAM_AGENCY_TOKEN
+   -i=$OBS_ACCESS_KEY_ID \
+   -k=$OBS_SECRET_ACCESS_KEY \
+   -t=$OBS_SECURITY_TOKEN
 
 obsutil ls
 ```
@@ -94,10 +101,10 @@ I made an adaption, avoiding the need to constantly edit the `.s3curl` configura
 
 ```bash
 s3curl \
---id $IAM_AGENCY_AK \
---key $IAM_AGENCY_SK \
+--id $OBS_ACCESS_KEY_ID \
+--key $OBS_SECRET_ACCESS_KEY \
 -- \
--H "x-amz-security-token: $IAM_AGENCY_TOKEN" \
+-H "x-amz-security-token: $OBS_SECURITY_TOKEN" \
 https://obs-for-agency-access.obs.ap-southeast-1.myhuaweicloud.com/test123.txt \
 2>/dev/null
 ```
